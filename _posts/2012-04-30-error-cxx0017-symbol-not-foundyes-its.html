@@ -1,0 +1,16 @@
+---
+layout: post
+title: 'Error CXX0017: Symbol not found….yes it’s there, numpty!'
+date: '2012-04-30T16:30:00.000-07:00'
+author: dReXler
+tags:
+- Visual Studio
+- Tidbits
+- Mozilla
+modified_time: '2012-05-01T09:39:34.409-07:00'
+thumbnail: http://lh6.ggpht.com/-dgvps06-bgw/T58gxGueQ8I/AAAAAAAAAP8/03BdHidwmdE/s72-c/image_thumb%25255B6%25255D.png?imgmax=800
+blogger_id: tag:blogger.com,1999:blog-5817456985556447012.post-6780801065774088487
+blogger_orig_url: https://darkdevx.blogspot.com/2012/04/error-cxx0017-symbol-not-foundyes-its.html
+---
+
+While inspecting a global variable to ensure that a specific library had been loaded and properly initialized, for some reason after adding it to the debug Watch window, its symbol still couldn’t be loaded. It so happens that when such variables are within nested namespaces they can’t be detected and it’s up to the developer to manually qualify them. <br /><b><i>Before</i></b>: <br /><h3> <a href="http://lh3.ggpht.com/-TEFKrVrlXWM/T58gwW4yJhI/AAAAAAAAAP0/kc7WdGNTVeQ/s1600-h/image%25255B10%25255D.png"><img alt="image" border="0" height="255" src="http://lh6.ggpht.com/-dgvps06-bgw/T58gxGueQ8I/AAAAAAAAAP8/03BdHidwmdE/image_thumb%25255B6%25255D.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="image" width="450" /></a></h3><b><i>After:</i></b><br /><a href="http://lh3.ggpht.com/-ky9DSQprS4A/T58gzC0bKxI/AAAAAAAAAQE/2ctwFrn0Myc/s1600-h/image%25255B12%25255D.png"><img alt="image" border="0" height="238" src="http://lh6.ggpht.com/-EOYJ3w37k_0/T58gzwXnk8I/AAAAAAAAAQM/bSA9RcJaYxU/image_thumb%25255B8%25255D.png?imgmax=800" style="background-image: none; border-bottom-width: 0px; border-left-width: 0px; border-right-width: 0px; border-top-width: 0px; display: inline; padding-left: 0px; padding-right: 0px; padding-top: 0px;" title="image" width="457" /></a>

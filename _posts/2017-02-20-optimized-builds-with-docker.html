@@ -1,0 +1,14 @@
+---
+layout: post
+title: Optimized Builds with Docker
+date: '2017-02-20T04:12:00.000-08:00'
+author: dReXler
+tags:
+- Docker
+- ".Net Core"
+modified_time: '2018-04-14T14:45:13.919-07:00'
+blogger_id: tag:blogger.com,1999:blog-5817456985556447012.post-4793236860781017180
+blogger_orig_url: https://darkdevx.blogspot.com/2017/02/optimized-builds-with-docker.html
+---
+
+Toying with Docker in the past, it's true power wasn't really revealed until it became a necessity on a API project due to the need to ensure that installed dependencies were the same regardless of which machine - dev or the build server itself was used. Essentially, the process was to define two Dockerfiles - one for building the .Net Core app and another for hosting only the necessary "build bits" from the earlier build. The former reduced the need for the Jenkins server to have all the required packages installed on it, and the latter was as an immutable tiny but fast image one could run locally or in prod. &nbsp; Here's a more detailed instruction on how to do the same:&nbsp;<a href="https://blogs.msdn.microsoft.com/stevelasker/2016/09/29/building-optimized-docker-images-with-asp-net-core/" target="_blank">Building Optimized Docker Images with ASP.Net Core</a>. Hats off to the guys in Redmond!
