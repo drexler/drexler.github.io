@@ -1,0 +1,31 @@
+---
+layout: post
+title: Moving from Blogger to Github Pages
+date: '2020-03-13T09:08:00.000-07:00'
+categories: general
+author: dReXler
+tags:
+- general
+---
+
+So it's been two years since my last update and I've generally been too preoccupied(lazy?) to update this blog. I started on Blogger back in 2009 to showcase
+a side project employing Java and good ol' Adobe Air when using Flash/Flex was all the rage. Sidenote: does anyone use GWT these days? Over time, as I've invested my efforts 
+mostly on Github projects - both personal and open source-related  - it became apparent that consolidating both my blog and other projects on a common platform
+was the way forward. I wanted a minimalist-styled blog without too much effort; building one in React was under consideration since it's a library i work with. 
+My inner geek still wanted the barebones and thus Jekyll & Github Pages won out. The migration effort was fairly straightforward. 
+<br/>
+
+<p>
+    Adding a new blog post simply involves the following: 
+    <ul>
+        <li> adding an entry to _posts folder</li>
+        <li> serving up the files to test locally: <b>$ bundle exec jekyll serve --trace </b></li>
+        <li> testing the rendered html for correctness:<b>$ bundle exec htmlproofer ./_site --disable-external</b>  </li>
+        <li> pushing & committing like any other cod</li>
+    </ul>    
+</p>
+
+<br/>
+
+EASY PEASY LEMON SQUEEZY! 
+
