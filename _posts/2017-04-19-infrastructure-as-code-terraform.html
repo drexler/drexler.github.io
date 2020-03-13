@@ -1,0 +1,14 @@
+---
+layout: post
+title: Infrastructure As Code - Terraform
+date: '2017-04-19T04:44:00.000-07:00'
+author: dReXler
+tags:
+- AWS
+- Terraform
+modified_time: '2017-05-08T04:45:53.949-07:00'
+blogger_id: tag:blogger.com,1999:blog-5817456985556447012.post-2372356653535295733
+blogger_orig_url: https://darkdevx.blogspot.com/2017/04/infrastructure-as-code-terraform.html
+---
+
+Web first! Cloud first! That's the mantra at work, where the goal is to eventually move all existing apps to the cloud. Woohoo! Toss in the need for the apps to be platform-agnostic after years of being wedded to Microsoft stack and it makes for exciting times. After a quick comparison of the major cloud vendors out there in terms of richness of &nbsp;offerings for what we intended, it's no surprise AWS won hands down. Prototyping by hand and running commands from the AWS CLI is okay for the trivial stuff like launching an EC2 instance or updating security groups. However, for things like CloudFormation where there was the need to launch and deal with multiple instances, the dependencies amongst themselves, correctly configured security groups based on generated IPs and manage all this within some source control; <a href="https://www.terraform.io/" target="_blank">Terraform </a>was the answer. &nbsp;It's incredible that it's open source meaning we have the ability to fork the code (which I have :) ) and tweak things as we see fit without waiting for the community to address them.
