@@ -1,5 +1,5 @@
 ---
-title: "C'est moi?"
+title: "Moi?"
 permalink: "/moi/"
 layout: page
 ---
