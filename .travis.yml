@@ -1,0 +1,11 @@
+language: ruby
+rvm:
+  - 2.5
+before_install:
+    - yes | gem update --system --force
+    - gem install bundler
+install:
+  - bundle install
+script:
+  - bundle exec jekyll build --safe
+  - bundle exec htmlproofer ./_site --disable-external
