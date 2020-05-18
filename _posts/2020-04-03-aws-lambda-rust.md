@@ -59,7 +59,7 @@ Custom (Rust)  | AmazonLinux    | 283                     | 232              | 3
 .Net Core 3.1  | AmazonLinux 2  | 3549                    | 94               | 111                       | 
 Custom (Rust**)| AmazonLinux    | 203                     | 76               | 34                        |
 
-Rust** : *Partially optimizated (Rust TLS for Rusoto SDK, targeted architecture: x86_64-unknown-linux-musl)*
+Rust** : *Partially optimized (Rust TLS for Rusoto SDK, targeted architecture: x86_64-unknown-linux-musl)*
 
 
 
