@@ -7,5 +7,5 @@ before_install:
 install:
   - bundle install
 script:
-  - bundle exec jekyll build --safe
+  - bundle exec jekyll build
   - bundle exec htmlproofer ./_site --disable-external
