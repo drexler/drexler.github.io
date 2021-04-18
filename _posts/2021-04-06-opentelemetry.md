@@ -9,7 +9,6 @@ tags:
 - rust
 ---
 
-#### Prologue
 In the past year, the platform team was tasked with setting up infrastructure and services to unify the company's collection of disparate databases into distinct domain databases. These legacy databases served a wide array of business applications and ran on different RDBMSes. The overall objective was to eventually have a set of microservices each of which encapsulated a business concern, upon which teams could then build their applications and services. An interesting project. The challenge? It had to be done gradually without disruption to other teams' applications. Until those legacy databases were retired, changes to any domain database needed to be streamed in realtime to them. Briefly, based on the initial requirements, we went with PostgreSQL to power the domain databases; Debezium to capture data changes in those databases' Write Ahead Logs and forward them for targeted schema conversions with dedicated services via Kinesis.
 
 After a couple of development iterations, to gain an insight into the performance of the service that polled the WAL, the service wrapper around Debezium was instrumented using [Micrometer] with the generated metrics scraped by an external Prometheus cluster. Subsequently, a Grafana dashboard was setup to visualize these.  With the removal of a key requirement of maintaining the order of data changes transmitted downstream, the need for reading the WAL also changed as domain databases now each had a dedicated outbox to commit transaction summaries to. Naturally, the question became whether Debezium would still be necessary. It was not. The team would go on to prove that out by building a replacement containerized multithreaded service that polled the *Outbox* table and sharded the changes by tenant into Kinesis. A couple of interesting things of note happened here:
@@ -38,7 +37,7 @@ That's quite a few changes. The curious Rustacean in me wondered how the perform
 
 
 For a quick demonstration of the tracing capabilities, I have a [demo] built to showcase:
-* support for multiple languages -  chose Rust, Typescript and .Net 5
+* support for multiple languages -  chose Rust, Typescript with ExpressJS and .Net 5
 * tracing across different communication protocols - HTTP & gRPC
 * auto-instrumentation of services
 * manual instrumentation of services
@@ -46,14 +45,14 @@ For a quick demonstration of the tracing capabilities, I have a [demo] built to 
 Rust is intentionally used for two services - *Employee* & *Direct Deposits* to demonstrate manual instrumentation with synchronous and asynchronous functions as the data layer each service works with offered a sync API, in the case of [Diesel] with PostgreSQL and an async API via [MongoDB]'s Rust 2.0-alpha driver. Typescript, comes along for the ride since it's one of the languages I use server side. .Net5 is latest language iteration from Microsoft, so I had a side interest in taking a peek at its comparative performance to Rust [again]. 
 
 ##### Instrumentation, Traces, Events & Tags
-With OpenTelemetry, one can auto-instrument code and/or apply manual instrumentation. This gives flexibility when working with legacy codebases or starting greenfield projects. 
+With OpenTelemetry, one can auto-instrument code and/or apply manual instrumentation. This gives flexibility when working with legacy codebases or starting greenfield projects by allowing teams to auto-instrument applications first and then for deeper insights into areas of the code that might be of interest later on, apply the instrumentation manually.
 
-From the demo code, I the instrumentation with .Net5-based *Paycheck* service as follows:
+From the demo code, I instrumented the .Net5-based *Paycheck* service as follows:
 {% highlight csharp %}
 {% github_sample /drexler/opentelemetry-demo-tracing/blob/main/services/paycheck/src/DependencyInjection.cs 67 83 %}
 {% endhighlight %}
 
-Here, under the hood, OpenTelemetry for DotNet set up the auto-instrumentation via *AddAspNetCoreInstrumentation()* and uses the *System.Diagnostics.ActivitySource* to setup the event sink named *paycheck-db-conn* for handling the manual instrumentation later as seen below: 
+Here, under the hood, OpenTelemetry for DotNet sets up the auto-instrumentation via *AddAspNetCoreInstrumentation()* and uses the *System.Diagnostics.ActivitySource* to setup a custom event sink named *paycheck-db-conn* for handling the manual instrumentation later as seen below: 
 
 {% highlight csharp %}
 {% github_sample /drexler/opentelemetry-demo-tracing/blob/main/services/paycheck/src/Repositories/PayRepository.cs 12 43 %}
@@ -70,7 +69,7 @@ A trace is simply a collection of spans. In the above, we start a *child* span o
 }
 {% endhighlight %}
 
- With the requestId (aka the traceId) above, we see how the additional metadata which we applied to the span helps us to understand a request error. 
+ With the requestId (aka the global traceId) above, we see how the additional metadata which we applied to the span helps us to understand a request error as the request is propagated across different service and network boundaries.
 
  ![Trace Overview](/assets/imgs/trace-error.png) 
 
@@ -78,14 +77,14 @@ A trace is simply a collection of spans. In the above, we start a *child* span o
  
  In this case, a database connectivity problem! 
 
- We see this same pattern applied to both the Rust-based services: *Employee* & *Direct Deposit*
+ We apply a similar pattern to both Rust-based services: *Employee* & *Direct Deposit*. Below, we pull the propagated trace context and use it to further build child spans around database calls.
 {% highlight rust %}
-{% github_sample /drexler/opentelemetry-demo-tracing/blob/main/services/employee/src/database.rs 23 48 %}
+{% github_sample /drexler/opentelemetry-demo-tracing/blob/main/services/employee/src/service.rs 33 55 %}
 {% endhighlight %} 
 
-and the *Payroll* service: 
+Similarly, for the *Payroll* service: 
 {% highlight typescript %}
-{% github_sample /drexler/opentelemetry-demo-tracing/blob/main/services/payroll/src/routes/employees.ts 89 111 %}
+{% github_sample /drexler/opentelemetry-demo-tracing/blob/main/services/payroll/src/routes/employees.ts 97 119 %}
 {% endhighlight %} 
 
 
