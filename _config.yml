@@ -35,5 +35,5 @@ comments:
 
 plugins:
  - jekyll-feed
- - jekyll_github_sample
+ - jekyll-github-sample
 
