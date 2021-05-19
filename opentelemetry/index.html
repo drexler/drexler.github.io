@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<title>OpenTelemetry: Observability in Distributed Services | Codebrews &amp; Bytes</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="In the past year, the platform team was tasked with setting up infrastructure and services to unify the company’s collection of disparate databases into dist...">
+<meta name="author" content="dReXler">
+<meta name="generator" content="Jekyll v4.0.1">
+<link rel="canonical" href="/opentelemetry/">
+
+<link rel="stylesheet" href="/assets/css/minimal.css">
+
+<link rel="stylesheet" href="/assets/css/classes.css">
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="Codebrews & Bytes">
+
+
+
+
+<header class="icons">
+  
+  
+    
+  <nav>
+  <a aria-label="Home" href="/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#home"></use></svg><span aria-hidden="true" >Home</span></a>
+  <a aria-label="Moi?" href="/moi/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#address-card"></use></svg><span aria-hidden="true" >Moi?</span></a>
+  
+  </nav>
+
+
+    
+  <nav>
+  <a aria-label="Mail" href="mailto:andrew.quartey@gmail.com" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg><span aria-hidden="true" class="hidden">Mail</span></a>
+  <a aria-label="Github" href="https://github.com/drexler" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg><span aria-hidden="true" class="hidden">Github</span></a>
+  <a aria-label="Subscribe" href="/feed.xml" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg><span aria-hidden="true" class="hidden">Subscribe</span></a>
+  
+  </nav>
+
+
+  
+  
+    <div class="hidden description"></div>
+  
+</header>
+
+<article>
+  <header>
+  
+  <h1><a href="/opentelemetry/">OpenTelemetry: Observability in Distributed Services</a></h1><time datetime="2021-04-06T16:08:00+00:00">April 06, 2021</time>
+</header>
+
+  <p>In the past year, the platform team was tasked with setting up infrastructure and services to unify the company’s collection of disparate databases into distinct domain databases. These legacy databases served a wide array of business applications and ran on different RDBMSes. The overall objective was to eventually have a set of microservices each of which encapsulated a business concern, upon which teams could then build their applications and services. An interesting project. The challenge? It had to be done gradually without disruption to other teams’ applications. Until those legacy databases were retired, changes to any domain database needed to be streamed in realtime to them. Briefly, based on the initial requirements, we went with PostgreSQL to power the domain databases; Debezium to capture data changes in those databases’ Write Ahead Logs and forward them for targeted schema conversions with dedicated services via Kinesis.</p>
+
+<p>After a couple of development iterations, to gain an insight into the performance of the service that polled the WAL, the service wrapper around Debezium was instrumented using <a href="https://micrometer.io/">Micrometer</a> with the generated metrics scraped by an external Prometheus cluster. Subsequently, a Grafana dashboard was setup to visualize these.  With the removal of a key requirement of maintaining the order of data changes transmitted downstream, the need for reading the WAL also changed as domain databases now each had a dedicated outbox to commit transaction summaries to. Naturally, the question became whether Debezium would still be necessary. It was not. The team would go on to prove that out by building a replacement containerized multithreaded service that polled the <em>Outbox</em> table and sharded the changes by tenant into Kinesis. A couple of interesting things of note happened here:</p>
+<ul>
+  <li><em>Implementation was in .Net Core</em></li>
+  <li><em>The instrumentation library changed to <a href="https://www.app-metrics.io/">AppMetrics</a></em></li>
+  <li><em>The metrics dashboard was updated to visualize the newly generated data</em></li>
+</ul>
+
+<p>That’s quite a few changes. The curious Rustacean in me wondered how the performance of this service would compare if it was written in <a href="https://www.rust-lang.org/">Rust</a> to take advantage of the concurrent primitives and performance <a href="https://tokio.rs/">Tokio</a> provides alongside <a href="https://github.com/rusoto/rusoto">Rusoto</a>. Replicating it would be fairly straightforward, however, there was no avoiding the other two changes: a new language-specific metrics library and updating the dashboards all over again. How can all this be avoided, not just in this scenario but in an much wider context of rewrites of existing services but needing to preserve the existing instrumentation? Additionally, internal deliberations about the possibility of moving away from the APM vendor to an internally hosted Elastic solution was also another real factor for consideration. Incredibly, a new open source project <a href="https://opentelemetry.io/">OpenTelemetry</a> had a lot of the answers to questions I was mulling.</p>
+
+<h4 id="opentelemetry">OpenTelemetry</h4>
+<p><a href="https://opentelemetry.io/">OpenTelemetry</a> is a <a href="https://www.cncf.io/">CNCF</a> project that defines a language-neutral specification and provides a collection of APIs, SDKs for handling observability data such as logs, metrics &amp; traces in a vendor-agnostic manner. This project was formed from the convergence of two competing projects- OpenTracing &amp; OpenCensus and backed by major cloud providers from Google, Microsoft, Amazon and virtually all vendors in the observability space - Splunk, Elastic, Datadog, LightStep, DynaTrace, NewRelic, Logzio, HoneyComb etc. Let us explore the benefits of adopting OpenTelemetry for existing and future greenfield projects.</p>
+
+<ul>
+  <li>
+    <p>The <a href="https://github.com/open-telemetry/opentelemetry-specification">OpenTelemetry Specification</a>’s language neutrality allows for implementations in different languages. Currently, as of this writing, there are implementations for some of the most widely used general purpose languages provided by OpenTelemetry’s SIGs -  Special Interest Groups: C++, .Net, Java, Javascript, Python, Go, Rust, Erlang, Ruby, PHP, Swift. These are a dedicated groups of contributors with a focus on a single language implementation. If there’s a software project using a language that is unsupported currently, chances are it will be supported in future. All this means a greater degree of flexibility when implementing software components; regardless of the language choice, instrumentation will be the same.</p>
+  </li>
+  <li>
+    <p><a href="https://opentelemetry.io/">OpenTelemetry</a>’s extensible architecture means that library/plugin authors can instrument their code with the API and when these artifacts are utilized in a service or application implementing the OpenTelemetry SDK, there is visibility into both the service code and third party libraries performance. Microsoft’s <a href="https://dapr.io/">Distributed Application Runtime</a> library is an example. There are plugins for popular frameworks like Spring, Express etc.</p>
+  </li>
+  <li>
+    <p><a href="https://opentelemetry.io/">OpenTelemetry</a> prevents vendor lock-in. The OpenTelemetry <a href="https://opentelemetry.io/docs/collector/">Collector</a> allows for the reception, processing and exportation of telemetry data with support for different open source wire formats - Jaeger, Prometheus, Fluent Bit, W3C TraceContext format, Zipkin’s B3 headers etc. More so, with implementation of <a href="https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter">Exporters</a> for different telemetry backends, switching between vendors is a breeze. For example, one can pipe their tracing data to NewRelic, Elastic, a deployed instance of Zipkin etc…and it is all a simple configuration change on the <a href="https://opentelemetry.io/docs/collector/">Collector</a>. Think of it as instrumentation as a form of abstraction, where the destination backends for the telemetry data is abstracted away from the application/service.</p>
+
+    <p><img src="/assets/imgs/otel-collector.png" alt="OpenTelemetry Collector" /></p>
+  </li>
+  <li>
+    <p>With the stabilization of the <a href="https://medium.com/opentelemetry/opentelemetry-specification-v1-0-0-tracing-edition-72dd08936978">Tracing Specification</a> and the outline of the <a href="https://medium.com/opentelemetry/opentelemetry-metrics-roadmap-f4276fd070cf">Metrics Roadmap</a>, OpenTelemetry is shaping up to be the way to derive insights into distributed services. One library to trace, generate metrics and connect them to other telemetry data. Since it is also the <a href="https://www.cncf.io/">CNCF</a> project to replace OpenTracing &amp; OpenCensus, for service meshes like <a href="https://linkerd.io/">Linkerd</a>, <a href="https://opentelemetry.io/">OpenTelemetry</a> will eventually become the de-facto way of propagating telemetry data from the various services. This means an easier transition when moving from a collection of microservices to a service mesh when the complexity warrants it.</p>
+  </li>
+</ul>
+
+<h4 id="demo">Demo</h4>
+
+<p><img src="/assets/imgs/otel-demo-tracing.png" alt="OpenTelemetry Collector" /></p>
+
+<p>For a quick demonstration of the tracing capabilities, I have a <a href="https://github.com/drexler/opentelemetry-demo-tracing">demo</a> built to showcase:</p>
+<ul>
+  <li>support for multiple languages -  chose Rust, Typescript with ExpressJS and .Net 5</li>
+  <li>tracing across different communication protocols - HTTP &amp; gRPC</li>
+  <li>auto-instrumentation of services</li>
+  <li>manual instrumentation of services</li>
+</ul>
+
+<p>Rust is intentionally used for two services - <em>Employee</em> &amp; <em>Direct Deposits</em> to demonstrate manual instrumentation with synchronous and asynchronous functions as the data layer each service works with offered a sync API, in the case of <a href="http://diesel.rs/">Diesel</a> with PostgreSQL and an async API via <a href="https://www.mongodb.com/2">MongoDB</a>’s Rust 2.0-alpha driver. Typescript, comes along for the ride since it’s one of the languages I use server side. .Net5 is latest language iteration from Microsoft, so I had a side interest in taking a peek at its comparative performance to Rust <a href="https://drexler.github.io/aws-lambda-rust/">again</a>.</p>
+
+<h5 id="instrumentation-traces-events--tags">Instrumentation, Traces, Events &amp; Tags</h5>
+<p>With OpenTelemetry, one can auto-instrument code and/or apply manual instrumentation. This gives flexibility when working with legacy codebases or starting greenfield projects by allowing teams to auto-instrument applications first and then for deeper insights into areas of the code that might be of interest later on, apply the instrumentation manually.</p>
+
+<p>From the demo code, I instrumented the .Net5-based <em>Paycheck</em> service as follows:</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="k">public</span> <span class="k">static</span> <span class="k">void</span> <span class="nf">ConfigureTracing</span><span class="p">(</span><span class="n">IServiceCollection</span> <span class="n">services</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// Necessary for OpenTelemetry Collector communication since traffic is unencrypted for demo purposes</span>
+    <span class="n">AppContext</span><span class="p">.</span><span class="nf">SetSwitch</span><span class="p">(</span><span class="s">"System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport"</span><span class="p">,</span> <span class="k">true</span><span class="p">);</span>
+
+    <span class="n">services</span><span class="p">.</span><span class="nf">AddOpenTelemetryTracing</span><span class="p">((</span><span class="n">builder</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="n">builder</span>
+        <span class="p">.</span><span class="nf">AddSource</span><span class="p">(</span><span class="s">"paycheck-db-conn"</span><span class="p">)</span>
+        <span class="p">.</span><span class="nf">AddAspNetCoreInstrumentation</span><span class="p">()</span>
+        <span class="p">.</span><span class="nf">SetResourceBuilder</span><span class="p">(</span><span class="n">ResourceBuilder</span><span class="p">.</span><span class="nf">CreateDefault</span><span class="p">().</span><span class="nf">AddService</span><span class="p">(</span><span class="s">"paycheck-service"</span><span class="p">))</span>
+        <span class="p">.</span><span class="nf">AddOtlpExporter</span><span class="p">(</span><span class="n">options</span> <span class="p">=&gt;</span>
+        <span class="p">{</span>
+            <span class="kt">var</span> <span class="n">otelCollectorUri</span> <span class="p">=</span> <span class="n">Environment</span><span class="p">.</span><span class="nf">GetEnvironmentVariable</span><span class="p">(</span><span class="s">"OTEL_COLLECTOR_URI"</span><span class="p">)</span> <span class="p">??</span> <span class="s">"http://localhost:4317"</span><span class="p">;</span>
+            <span class="n">options</span><span class="p">.</span><span class="n">ExportProcessorType</span> <span class="p">=</span> <span class="n">ExportProcessorType</span><span class="p">.</span><span class="n">Batch</span><span class="p">;</span>
+            <span class="n">options</span><span class="p">.</span><span class="n">Endpoint</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">Uri</span><span class="p">(</span><span class="n">otelCollectorUri</span><span class="p">);</span>
+        <span class="p">}));</span>
+<span class="p">}</span></code></pre></figure>
+
+<p>Here, under the hood, OpenTelemetry for DotNet sets up the auto-instrumentation via <em>AddAspNetCoreInstrumentation()</em> and uses the <em>System.Diagnostics.ActivitySource</em> to setup a custom event sink named <em>paycheck-db-conn</em> for handling the manual instrumentation later as seen below:</p>
+
+<figure class="highlight"><pre><code class="language-csharp" data-lang="csharp"><span class="k">public</span> <span class="k">class</span> <span class="nc">PayRepository</span> <span class="p">:</span> <span class="n">BaseRepository</span><span class="p">&lt;</span><span class="n">Pay</span><span class="p">&gt;,</span> <span class="n">IPayRepository</span>
+<span class="p">{</span>
+    <span class="k">private</span> <span class="k">readonly</span> <span class="n">ActivitySource</span> <span class="n">_activitySource</span><span class="p">;</span>
+    <span class="k">public</span> <span class="nf">PayRepository</span><span class="p">(</span>
+        <span class="n">IMongoClient</span> <span class="n">mongoClient</span><span class="p">,</span>
+        <span class="n">IClientSessionHandle</span> <span class="n">clientSessionHandle</span><span class="p">)</span> <span class="p">:</span> <span class="k">base</span><span class="p">(</span><span class="n">mongoClient</span><span class="p">,</span> <span class="n">clientSessionHandle</span><span class="p">,</span> <span class="s">"paychecks"</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">_activitySource</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">ActivitySource</span><span class="p">(</span><span class="s">"paycheck-db-conn"</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">async</span> <span class="n">Task</span><span class="p">&lt;</span><span class="n">IEnumerable</span><span class="p">&lt;</span><span class="n">Pay</span><span class="p">&gt;&gt;</span> <span class="nf">GetAllPaychecksAsync</span><span class="p">()</span>
+    <span class="p">{</span>
+        <span class="kt">var</span> <span class="n">span</span> <span class="p">=</span> <span class="n">_activitySource</span><span class="p">.</span><span class="nf">StartActivity</span><span class="p">(</span><span class="s">"GetAllPaychecksAsync"</span><span class="p">);</span>
+        <span class="n">List</span><span class="p">&lt;</span><span class="n">Pay</span><span class="p">&gt;</span> <span class="n">result</span> <span class="p">=</span> <span class="k">null</span><span class="p">;</span>
+        <span class="k">try</span>
+        <span class="p">{</span>
+            <span class="n">result</span> <span class="p">=</span> <span class="k">await</span> <span class="n">Collection</span><span class="p">.</span><span class="nf">AsQueryable</span><span class="p">().</span><span class="nf">ToListAsync</span><span class="p">();</span>
+            <span class="n">span</span><span class="p">.</span><span class="nf">AddTag</span><span class="p">(</span><span class="s">"paychecks.count"</span><span class="p">,</span> <span class="n">result</span><span class="p">.</span><span class="n">Count</span><span class="p">);</span>
+        <span class="p">}</span>
+        <span class="k">catch</span> <span class="p">(</span><span class="n">Exception</span> <span class="n">ex</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">span</span><span class="p">.</span><span class="nf">AddEvent</span><span class="p">(</span><span class="k">new</span> <span class="nf">ActivityEvent</span><span class="p">(</span><span class="s">$"Call Failure. Reason: </span><span class="p">{</span><span class="n">ex</span><span class="p">.</span><span class="n">Message</span><span class="p">}</span><span class="s">"</span><span class="p">));</span>
+            <span class="k">throw</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="k">finally</span>
+        <span class="p">{</span>
+            <span class="n">span</span><span class="p">.</span><span class="nf">Stop</span><span class="p">();</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">result</span><span class="p">;</span>
+    <span class="p">}</span></code></pre></figure>
+
+<p>A trace is simply a collection of spans. In the above, we start a <em>child</em> span of the parent span and annotate it appropriate via tags &amp; events. Events represent occurences that happened at a specific time during a span’s workload. Together, the additional metadata drives quick insights when investigating problems. For example suppose we got the following api response on an attempt to load all paychecks:</p>
+
+<figure class="highlight"><pre><code class="language-json" data-lang="json"><span class="p">{</span><span class="w">
+    </span><span class="nl">"statusCode"</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Server ist kaput!"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"developerMessage"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Internal Error"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"requestId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"451b8025562676951540a00cc121af04"</span><span class="w">
+</span><span class="p">}</span></code></pre></figure>
+
+<p>With the requestId (aka the global traceId) above, we see how the additional metadata which we applied to the span helps us to understand a request error as the request is propagated across different service and network boundaries.</p>
+
+<p><img src="/assets/imgs/trace-error.png" alt="Trace Overview" /></p>
+
+<p><img src="/assets/imgs/db-down.png" alt="Database Trace Details" /></p>
+
+<p>In this case, a database connectivity problem!</p>
+
+<p>We apply a similar pattern to both Rust-based services: <em>Employee</em> &amp; <em>Direct Deposit</em>. Below, we pull the propagated trace context and use it to further build child spans around database calls.</p>
+
+<figure class="highlight"><pre><code class="language-rust" data-lang="rust"><span class="nd">#[tonic::async_trait]</span>
+<span class="k">impl</span> <span class="n">EmployeeService</span> <span class="k">for</span> <span class="n">MyEmployeeService</span> <span class="p">{</span>
+    <span class="k">async</span> <span class="k">fn</span> <span class="nf">get_all_employees</span><span class="p">(</span>
+        <span class="o">&amp;</span><span class="k">self</span><span class="p">,</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="o">&lt;</span><span class="p">()</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="p">)</span> <span class="k">-&gt;</span> <span class="n">Result</span><span class="o">&lt;</span><span class="n">Response</span><span class="o">&lt;</span><span class="n">GetAllEmployeesResponse</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">Status</span><span class="o">&gt;</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="n">parent_ctx</span> <span class="o">=</span> <span class="nn">tracing</span><span class="p">::</span><span class="nf">get_parent_context</span><span class="p">(</span><span class="o">&amp;</span><span class="n">request</span><span class="p">);</span>
+        <span class="k">let</span> <span class="n">tracer</span> <span class="o">=</span> <span class="nn">global</span><span class="p">::</span><span class="nf">tracer</span><span class="p">(</span><span class="s">"employee-service"</span><span class="p">);</span>
+        <span class="k">let</span> <span class="n">span</span> <span class="o">=</span> <span class="n">tracer</span><span class="nf">.start_with_context</span><span class="p">(</span><span class="s">"get_all_employees"</span><span class="p">,</span> <span class="n">parent_ctx</span><span class="p">);</span>
+
+        <span class="k">let</span> <span class="n">db_result</span> <span class="o">=</span> <span class="n">tracer</span><span class="nf">.with_span</span><span class="p">(</span><span class="n">span</span><span class="p">,</span> <span class="p">|</span><span class="mi">_</span><span class="n">cx</span><span class="p">|</span> <span class="k">-&gt;</span> <span class="n">Result</span><span class="o">&lt;</span><span class="nb">Vec</span><span class="o">&lt;</span><span class="n">Employee</span><span class="o">&gt;</span><span class="p">,</span> <span class="nn">error</span><span class="p">::</span><span class="n">Error</span><span class="o">&gt;</span> <span class="p">{</span>
+            <span class="k">let</span> <span class="n">db_client</span> <span class="o">=</span> <span class="nn">EmployeeDb</span><span class="p">::</span><span class="nf">initialize</span><span class="p">()</span><span class="o">?</span><span class="p">;</span>
+            <span class="n">db_client</span>
+                <span class="nf">.get_employees</span><span class="p">()</span>
+                <span class="nf">.map</span><span class="p">(|</span><span class="n">employees</span><span class="p">|</span> <span class="n">employees</span><span class="nf">.into_iter</span><span class="p">()</span><span class="nf">.map</span><span class="p">(</span><span class="n">model_mapper</span><span class="p">)</span><span class="nf">.collect</span><span class="p">())</span>
+        <span class="p">});</span>
+
+        <span class="k">match</span> <span class="n">db_result</span> <span class="p">{</span>
+            <span class="nf">Ok</span><span class="p">(</span><span class="n">employees</span><span class="p">)</span> <span class="k">=&gt;</span> <span class="nf">Ok</span><span class="p">(</span><span class="nn">Response</span><span class="p">::</span><span class="nf">new</span><span class="p">(</span><span class="n">GetAllEmployeesResponse</span> <span class="p">{</span> <span class="n">employees</span> <span class="p">})),</span>
+            <span class="nf">Err</span><span class="p">(</span><span class="mi">_</span><span class="p">)</span> <span class="k">=&gt;</span> <span class="nf">Err</span><span class="p">(</span><span class="nn">Status</span><span class="p">::</span><span class="nf">unknown</span><span class="p">(</span><span class="s">"unable to load all employees"</span><span class="p">)),</span>
+        <span class="p">}</span>
+    <span class="p">}</span></code></pre></figure>
+
+<p>Similarly, for the <em>Payroll</em> service:</p>
+
+<figure class="highlight"><pre><code class="language-typescript" data-lang="typescript"><span class="cm">/**
+ * Gets an employee's paychecks
+ */</span>
+ <span class="nx">employeesRouter</span><span class="p">.</span><span class="kd">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">/:employee_id/paychecks</span><span class="dl">'</span><span class="p">,</span> <span class="p">(</span><span class="nx">request</span><span class="p">:</span> <span class="nx">Request</span><span class="p">,</span> <span class="nx">response</span><span class="p">:</span> <span class="nx">Response</span><span class="p">,</span> <span class="nx">next</span><span class="p">:</span> <span class="nx">NextFunction</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">span</span> <span class="o">=</span> <span class="nx">tracer</span><span class="p">.</span><span class="nx">startSpan</span><span class="p">(</span><span class="dl">'</span><span class="s1">payroll: getEmployeePaychecks</span><span class="dl">'</span><span class="p">);</span>
+
+    <span class="kd">const</span> <span class="nx">employeeId</span> <span class="o">=</span> <span class="nx">request</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">employee_id</span><span class="p">;</span>
+    <span class="nx">api</span><span class="p">.</span><span class="nx">context</span><span class="p">.</span><span class="kd">with</span><span class="p">(</span><span class="nx">api</span><span class="p">.</span><span class="nx">setSpan</span><span class="p">(</span><span class="nx">api</span><span class="p">.</span><span class="nx">context</span><span class="p">.</span><span class="nx">active</span><span class="p">(),</span> <span class="nx">span</span><span class="p">),</span> <span class="k">async</span><span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">traceId</span> <span class="o">=</span>  <span class="nx">span</span><span class="p">.</span><span class="nx">context</span><span class="p">().</span><span class="nx">traceId</span><span class="p">;</span>
+        <span class="k">try</span> <span class="p">{</span>
+            <span class="kd">const</span> <span class="nx">results</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">paycheckService</span><span class="p">.</span><span class="nx">getEmployeePaychecks</span><span class="p">({</span><span class="na">employee_id</span><span class="p">:</span> <span class="nx">employeeId</span><span class="p">});</span>
+            <span class="nx">response</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="nx">formatResponse</span><span class="p">(</span><span class="nx">results</span><span class="p">.</span><span class="nx">paychecks</span><span class="p">));</span>
+        <span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+            <span class="nx">next</span><span class="p">(</span><span class="nx">createError</span><span class="p">(...[</span><span class="nx">convertGrpcToHttpErrorCode</span><span class="p">(</span><span class="nx">err</span><span class="p">)],</span> <span class="p">{</span>
+                <span class="na">developerMessage</span><span class="p">:</span> <span class="nx">getGrpcErrorMessage</span><span class="p">(</span><span class="nx">err</span><span class="p">.</span><span class="nx">message</span><span class="p">),</span> 
+                <span class="nx">traceId</span>
+            <span class="p">}));</span>
+        <span class="p">}</span> <span class="k">finally</span> <span class="p">{</span>
+            <span class="nx">span</span><span class="p">.</span><span class="nx">end</span><span class="p">();</span>
+        <span class="p">}</span>
+    <span class="p">});</span>
+<span class="p">});</span></code></pre></figure>
+
+<h5 id="collector-deployment-pipelines--telemetry-backend-configuration">Collector Deployment, Pipelines &amp; Telemetry-backend Configuration</h5>
+
+<p>There are two modes of deploying the OpenTelemetry Collector:</p>
+<ul>
+  <li>agent: where the collector instance is running on the same host as client application</li>
+  <li>gateway: where one or more collector instances run as a standalone service.</li>
+</ul>
+
+<p>The Collector serves as centralized point to allow for the configuration of telemetry data reception, processing and exportation to desired telemetry backends. In our demo configuration as shown below, we pushed trace data in <em>batches</em> that was <em>received</em> via HTTP &amp; gRPC, through a trace <em>pipeline</em> setup to <em>export</em> the data to the <a href="https://www.jaegertracing.io/">Jaeger</a> and <a href="https://zipkin.io/">Zipkin</a> instances we deployed for analysis. Although commented out, the traces could have been sent to NewRelic as well. There are many supported vendors with the Collector. This makes it easy to compare the depth of analytics that various vendors can provide given the same telemetry data.</p>
+
+<figure class="highlight"><pre><code class="language-yaml" data-lang="yaml"><span class="na">receivers</span><span class="pi">:</span>
+  <span class="na">otlp</span><span class="pi">:</span>
+    <span class="na">protocols</span><span class="pi">:</span>
+      <span class="na">grpc</span><span class="pi">:</span>
+      <span class="na">http</span><span class="pi">:</span>
+        <span class="na">cors_allowed_origins</span><span class="pi">:</span>
+        <span class="pi">-</span> <span class="s">http://*</span>
+        <span class="pi">-</span> <span class="s">https://*</span>
+
+<span class="na">exporters</span><span class="pi">:</span>
+  <span class="na">jaeger</span><span class="pi">:</span>
+    <span class="na">endpoint</span><span class="pi">:</span> <span class="s">jaeger-all-in-one:14250</span>
+    <span class="na">insecure</span><span class="pi">:</span> <span class="no">true</span>
+  <span class="na">zipkin</span><span class="pi">:</span>
+    <span class="na">endpoint</span><span class="pi">:</span> <span class="s2">"</span><span class="s">http://zipkin-all-in-one:9411/api/v2/spans"</span>
+<span class="c1">#   newrelic:</span>
+<span class="c1">#     apikey: &lt;&lt;NEW_RELIC_INSIGHTS_KEY&gt;&gt;</span>
+<span class="c1">#     timeout: 30s</span>
+
+<span class="na">processors</span><span class="pi">:</span>
+  <span class="na">batch</span><span class="pi">:</span>
+
+<span class="na">service</span><span class="pi">:</span>
+  <span class="na">pipelines</span><span class="pi">:</span>
+    <span class="na">traces</span><span class="pi">:</span>
+      <span class="na">receivers</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">otlp</span><span class="pi">]</span>
+      <span class="na">processors</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">batch</span><span class="pi">]</span>
+      <span class="na">exporters</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">jaeger</span><span class="pi">,</span> <span class="nv">zipkin</span><span class="pi">]</span>
+      <span class="c1">#exporters: [zipkin, jaeger, newrelic]</span></code></pre></figure>
+
+<p>Through pipelines, metrics and eventually logs data will be exported through the collector thus making OpenTelemetry the one library for applications’ observability needs. Additionally, with the Collector pipelines, one can ship various telemetry data to different vendors. If desired, one can ship their metrics data to a vendor like Splunk and still use DataDog for traces and logging. OpenTelemetry opens up the possibilities…</p>
+
+<h5 id="links">Links</h5>
+<p>The demo code for the above can be found <a href="https://github.com/drexler/opentelemetry-demo-tracing">here</a></p>
+
+
+  
+</article>
+
+
+  <footer class="related">
+    <div class="previous"><span>Previous Post</span><a href="/reflog-rescue/">Git reflog to the rescue!</a></div>
+    <div class="next"></div>
+  </footer>
+
+
+
+</html>

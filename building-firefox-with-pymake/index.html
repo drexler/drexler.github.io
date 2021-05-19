@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<title>Building Firefox with pymake | Codebrews &amp; Bytes</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Up until recently I had been doing local builds of Firefox for my patches with GNU make before switching over to pymake which is a bit faster. I had missed t...">
+<meta name="author" content="dReXler">
+<meta name="generator" content="Jekyll v4.0.1">
+<link rel="canonical" href="/building-firefox-with-pymake/">
+
+<link rel="stylesheet" href="/assets/css/minimal.css">
+
+<link rel="stylesheet" href="/assets/css/classes.css">
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="Codebrews & Bytes">
+
+
+
+
+<header class="icons">
+  
+  
+    
+  <nav>
+  <a aria-label="Home" href="/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#home"></use></svg><span aria-hidden="true" >Home</span></a>
+  <a aria-label="Moi?" href="/moi/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#address-card"></use></svg><span aria-hidden="true" >Moi?</span></a>
+  
+  </nav>
+
+
+    
+  <nav>
+  <a aria-label="Mail" href="mailto:andrew.quartey@gmail.com" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg><span aria-hidden="true" class="hidden">Mail</span></a>
+  <a aria-label="Github" href="https://github.com/drexler" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg><span aria-hidden="true" class="hidden">Github</span></a>
+  <a aria-label="Subscribe" href="/feed.xml" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg><span aria-hidden="true" class="hidden">Subscribe</span></a>
+  
+  </nav>
+
+
+  
+  
+    <div class="hidden description"></div>
+  
+</header>
+
+<article>
+  <header>
+  
+  <h1><a href="/building-firefox-with-pymake/">Building Firefox with pymake</a></h1><time datetime="2012-03-08T20:06:00+00:00">March 08, 2012</time>
+</header>
+
+  <p>Up until recently I had been doing local builds of Firefox for my patches with GNU make before switching over to <a href="http://benjamin.smedbergs.us/pymake/">pymake</a> which is a bit faster. I had missed the doc strongly suggesting builds on Windows use pymake instead. Depending upon the files the patches being built touched, I could count on twiddling my thumbs from anywhere from an hour and 20 minutes&nbsp; thereabout&nbsp; to two at most. With pymake it takes just under an hour. It course it does help to have the latest hardware to speedup build time. More RAM wont hurt and neither would getting one’s hands on a core i7 machine be bad for starters.&nbsp; Speaking of RAM, I had to run off to Best Buy and get some for my PC and&nbsp; thereafter completely botched the installation. A workaround got them working, but then again I am careful with movements so as not to jar them loose out of the sockets. </p> <p>At some point, I will have to upgrade my machine and eventually move to using Visual Studio 2011(in beta as of now). So this post is largely a note to myself in order to set up my development environment as fast as possible and correctly. </p> <ul> <li>Install the latest DirectX SDK available from <a href="http://msdn.microsoft.com/en-us/directx">here</a>  <li>Grab and install the latest <a href="https://developer.mozilla.org/En/Simple_Firefox_build">Mozilla-Build</a> tools. Should be installed to the C:\ directory  <li>Within the mozilla-build directory, after selecting appropriate start-msvc##.bat file - where ## corresponds to the installed Visual Studio version, ensure all OK after running it.  <li><a href="http://sourceforge.net/projects/console/">Console</a> is by far one of best open-source utilities I have used.&nbsp; It provides a windows Powershell-like interface by providing multiple tabs, text selection etc, which puts the default windows command terminal in the shade. It’s not a shell mind you! Often, I keep tabs opens each for a specific purpose: managing my mercurial queues, building code changes, one for redoing the final linking and finally another for running associated tests. After downloading and extracting,&nbsp; copy the Console folder to C:\mozilla-build\msys.  <li>Next create a copy of the start-msvc##.bat and rename it to start-msvc##-Console.bat or any name to distinguish from the original batch file. This will be used often, so a shortcut of it to the desktop will prove most useful. Using notepad, edit the following lines:</li></ul> <p>from =&gt; <em>cd "%USERPROFILE%" "%MOZILLABUILD%\msys\bin\bash" --login –i</em></p> <p>&nbsp;&nbsp;&nbsp;&nbsp; to =&gt; <em>start /d "%USERPROFILE%" "" "%MOZILLABUILD%"\msys\Console\console.exe</em></p> <ul> <li>Obviously getting and unbundling the source and is well documented&nbsp; <a href="https://developer.mozilla.org/En/Developer_Guide/Source_Code/Mercurial">here</a>, so I wont go into too much detail other than pasting what I have in my current settings for both .mozconfig &amp; hgrc files</li></ul> <p><strong>.mozconfig</strong></p> <p>.<em> $topsrcdir/browser/config/mozconfig<br>mk_add_options MOZ_OBJDIR=C:/mozillafirefox/trunk/src/ff-dbg<br>ac_add_options --disable-optimize<br>ac_add_options --enable-debug<br>ac_add_options --enable-tests<br>ac_add_options --enable-debug-symbol</em></p> <p><strong>hgrc</strong></p> <p><em>[paths]<br>default = </em><a href="http://hg.mozilla.org/mozilla-central"><em>http://hg.mozilla.org/mozilla-central</em></a><br><em>try = ssh://'mon.nom@somemail.xyz'@hg.mozilla.org/try/</em></p> <p><em>[ui]<br>username = Mon nom &lt;<a href="mailto:mon.nom@somemail.xyz">mon.nom@somemail.xyz</a>&gt;<br>editor = vim</em></p> <p><em>[defaults]<br>qnew = -Ue</em></p> <p><em>[extensions]<br>hgext.mq = <br>hgext.rebase =</em></p> <p><em>[diff]<br>git = 1<br>showfunc = 1<br>unified = 8</em></p> <ul> <li>Since make.py-pymake- is nestled deep within src/build folder, trying to invoke it from anywhere within the src directory is unwieldy, ugly and error prone(learnt the hard way). For example running a&nbsp; simple mochitest or xpcshell test brings it home. A simple set of aliases helps to reduce it. In c:\users\&lt;username&gt;, create a <strong>.profile</strong> file and enter the following into it: </li></ul> <p><em>alias pymake="python -OO build/pymake/make.py"<br>alias pyblink="pymake –C ff-dbg/toolkit &amp;&amp; pymake –C ff-dbg/toolkit/library"</em></p> <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The first alias is primarily for rebuilding the entire project from the src directory or a sub-directory as well as running tests. <em>pyblink</em> is mainly for performing the final linking in objdir folder to reflect code edits. </p> <p>I guess the next step is to build with:&nbsp; <em>pymake –f client.mk</em> <img style="border-bottom-style: none; border-left-style: none; border-top-style: none; border-right-style: none" class="wlEmoticon wlEmoticon-smile" alt="Smile" src="http://lh3.ggpht.com/-NRNrv7TxRJk/T1kfP_ImRiI/AAAAAAAAAO8/t_3eIYuLW8E/wlEmoticon-smile%25255B2%25255D.png?imgmax=800"></p>  
+  
+</article>
+
+
+  <footer class="related">
+    <div class="previous"><span>Previous Post</span><a href="/belated-happy-new-year/">…belated Happy New Year?</a></div>
+    <div class="next"><span>Next Post</span><a href="/debugging-mochitests-with-visual-studio/">Debugging Mochitests with Visual Studio</a></div>
+  </footer>
+
+
+
+</html>

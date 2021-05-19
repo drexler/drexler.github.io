@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<title>Optimized Builds with Docker | Codebrews &amp; Bytes</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Toying with Docker in the past, it&#39;s true power wasn&#39;t really revealed until it became a necessity on a API project due to the need to ensure that installed ...">
+<meta name="author" content="dReXler">
+<meta name="generator" content="Jekyll v4.0.1">
+<link rel="canonical" href="/optimized-builds-with-docker/">
+
+<link rel="stylesheet" href="/assets/css/minimal.css">
+
+<link rel="stylesheet" href="/assets/css/classes.css">
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="Codebrews & Bytes">
+
+
+
+
+<header class="icons">
+  
+  
+    
+  <nav>
+  <a aria-label="Home" href="/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#home"></use></svg><span aria-hidden="true" >Home</span></a>
+  <a aria-label="Moi?" href="/moi/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#address-card"></use></svg><span aria-hidden="true" >Moi?</span></a>
+  
+  </nav>
+
+
+    
+  <nav>
+  <a aria-label="Mail" href="mailto:andrew.quartey@gmail.com" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg><span aria-hidden="true" class="hidden">Mail</span></a>
+  <a aria-label="Github" href="https://github.com/drexler" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg><span aria-hidden="true" class="hidden">Github</span></a>
+  <a aria-label="Subscribe" href="/feed.xml" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg><span aria-hidden="true" class="hidden">Subscribe</span></a>
+  
+  </nav>
+
+
+  
+  
+    <div class="hidden description"></div>
+  
+</header>
+
+<article>
+  <header>
+  
+  <h1><a href="/optimized-builds-with-docker/">Optimized Builds with Docker</a></h1><time datetime="2017-02-20T12:12:00+00:00">February 20, 2017</time>
+</header>
+
+  Toying with Docker in the past, it's true power wasn't really revealed until it became a necessity on a API project due to the need to ensure that installed dependencies were the same regardless of which machine - dev or the build server itself was used. Essentially, the process was to define two Dockerfiles - one for building the .Net Core app and another for hosting only the necessary "build bits" from the earlier build. The former reduced the need for the Jenkins server to have all the required packages installed on it, and the latter was as an immutable tiny but fast image one could run locally or in prod. &nbsp; Here's a more detailed instruction on how to do the same:&nbsp;<a href="https://blogs.msdn.microsoft.com/stevelasker/2016/09/29/building-optimized-docker-images-with-asp-net-core/" target="_blank">Building Optimized Docker Images with ASP.Net Core</a>. Hats off to the guys in Redmond!
+  
+</article>
+
+
+  <footer class="related">
+    <div class="previous"><span>Previous Post</span><a href="/these-arent-droids-youre-looking-for/">These aren't the droids you're looking for!</a></div>
+    <div class="next"><span>Next Post</span><a href="/infrastructure-as-code-terraform/">Infrastructure As Code - Terraform</a></div>
+  </footer>
+
+
+
+</html>

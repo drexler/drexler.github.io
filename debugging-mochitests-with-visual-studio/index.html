@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<title>Debugging Mochitests with Visual Studio | Codebrews &amp; Bytes</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Debugging an xpcshell test is far straightforward when compared to the more general mochitest. In the course of fixing a bug where change events weren’t bein...">
+<meta name="author" content="dReXler">
+<meta name="generator" content="Jekyll v4.0.1">
+<link rel="canonical" href="/debugging-mochitests-with-visual-studio/">
+
+<link rel="stylesheet" href="/assets/css/minimal.css">
+
+<link rel="stylesheet" href="/assets/css/classes.css">
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="Codebrews & Bytes">
+
+
+
+
+<header class="icons">
+  
+  
+    
+  <nav>
+  <a aria-label="Home" href="/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#home"></use></svg><span aria-hidden="true" >Home</span></a>
+  <a aria-label="Moi?" href="/moi/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#address-card"></use></svg><span aria-hidden="true" >Moi?</span></a>
+  
+  </nav>
+
+
+    
+  <nav>
+  <a aria-label="Mail" href="mailto:andrew.quartey@gmail.com" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg><span aria-hidden="true" class="hidden">Mail</span></a>
+  <a aria-label="Github" href="https://github.com/drexler" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg><span aria-hidden="true" class="hidden">Github</span></a>
+  <a aria-label="Subscribe" href="/feed.xml" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg><span aria-hidden="true" class="hidden">Subscribe</span></a>
+  
+  </nav>
+
+
+  
+  
+    <div class="hidden description"></div>
+  
+</header>
+
+<article>
+  <header>
+  
+  <h1><a href="/debugging-mochitests-with-visual-studio/">Debugging Mochitests with Visual Studio</a></h1><time datetime="2012-03-25T19:45:00+00:00">March 25, 2012</time>
+</header>
+
+  <p>Debugging an <a href="https://developer.mozilla.org/en/Xpcshell">xpcshell</a> test is far straightforward when compared to the more general <a href="https://developer.mozilla.org/en/Mochitest">mochitest</a>. In the course of fixing a bug where change events weren’t being fired for a focused and blurred text input or textrea when the user switches focus, I encountered a situation where after my initial fixes, an extra change event was then fired. To hunt down the culprit code responsible for the redundant dispatch, the current docs on debugging mochitests weren’t particularly helpful to those of us working on windows machines with Visual Studio.&nbsp; This technique is largely thanks to Josh Matthews and Mark Capella:</p> <ul> <li>Modify&nbsp; <em>testing/testsuite-targets.mk</em> by deleting the <em>autorun</em> option under RUN_MOCHITEST.  <li>Afterwards, run the entire mochitest suite for the branch where the particular test you want to debug is located. Wait for the browser to open with the associated tests. In Visual Studio, go to Tools-&gt;Attach Process and select the firefox.exe process showing the loaded tests.&nbsp; This should switch to the debugging view.  <li>Place an appropriate breakpoint in a relevant selection of the code that will most likely be triggered and then click on the link to the test that is to be debugged in the browser window. </li></ul> <p>Easy peasy lemon squeezy debugging <img style="border-bottom-style: none; border-left-style: none; border-top-style: none; border-right-style: none" class="wlEmoticon wlEmoticon-smile" alt="Smile" src="http://lh3.ggpht.com/-6VJD9BooejY/T3DIjcnd79I/AAAAAAAAAPo/vvqg4J_tjEw/wlEmoticon-smile%25255B2%25255D.png?imgmax=800"></p>  
+  
+</article>
+
+
+  <footer class="related">
+    <div class="previous"><span>Previous Post</span><a href="/building-firefox-with-pymake/">Building Firefox with pymake</a></div>
+    <div class="next"><span>Next Post</span><a href="/error-cxx0017-symbol-not-foundyes-its/">Error CXX0017: Symbol not found….yes it’s there, numpty!</a></div>
+  </footer>
+
+
+
+</html>

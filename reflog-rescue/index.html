@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<title>Git reflog to the rescue! | Codebrews &amp; Bytes</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="The standard development workflow utilized by my team requires rebasing of feature branches on the master branch prior to issuing a pull request and the subs...">
+<meta name="author" content="dReXler">
+<meta name="generator" content="Jekyll v4.0.1">
+<link rel="canonical" href="/reflog-rescue/">
+
+<link rel="stylesheet" href="/assets/css/minimal.css">
+
+<link rel="stylesheet" href="/assets/css/classes.css">
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="Codebrews & Bytes">
+
+
+
+
+<header class="icons">
+  
+  
+    
+  <nav>
+  <a aria-label="Home" href="/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#home"></use></svg><span aria-hidden="true" >Home</span></a>
+  <a aria-label="Moi?" href="/moi/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#address-card"></use></svg><span aria-hidden="true" >Moi?</span></a>
+  
+  </nav>
+
+
+    
+  <nav>
+  <a aria-label="Mail" href="mailto:andrew.quartey@gmail.com" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg><span aria-hidden="true" class="hidden">Mail</span></a>
+  <a aria-label="Github" href="https://github.com/drexler" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg><span aria-hidden="true" class="hidden">Github</span></a>
+  <a aria-label="Subscribe" href="/feed.xml" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg><span aria-hidden="true" class="hidden">Subscribe</span></a>
+  
+  </nav>
+
+
+  
+  
+    <div class="hidden description"></div>
+  
+</header>
+
+<article>
+  <header>
+  
+  <h1><a href="/reflog-rescue/">Git reflog to the rescue!</a></h1><time datetime="2020-07-29T16:08:00+00:00">July 29, 2020</time>
+</header>
+
+  <p>The standard development workflow utilized by my team requires rebasing of feature branches on the master branch prior to issuing a pull request and the subsequent merge. This allows us to ensure that commits are always <em>in order</em> after a merge rather than how they are arranged when a merge strategy is employed. There are pros and cons to each approach. However, having been a heavy Git user for years I tend to favor the rebase approach. So one can imagine when for a hairy 10 minutes i lost my work entirely on a new feature branch. Pull from remote? That was useless since I had done a rebase previously and force-pushed the local branch up to the remote branch thus wiping everything there. Here’s how I got into such a state.</p>
+
+<p>Here’s how I got into such a state. The repository was new and had originally been created without any file. So on pushing up my feature branch for the initial review, it became the default branch. To correct this, the idea then was to create a <em>master</em> branch from the feature branch and delete all the commits with the exception of a README file it contained. Thereafter, the feature branch will then be rebased on master as always and the PR issued against it.  What happened on the rebase was that Git seeing that all the commits were deleted essentially resolved the rebase automatically by deleting the commits I had in the feature branch. Rebase re-writes history! Being the same commit hash ids, I was left with nothing. Immediately pushing to remote after the rebase compounded the issue.</p>
+
+<p>With <code class="highlighter-rouge">git log -2 --oneline</code> returning nothing how was I to recover days of work. Git Reflog! I knew about it but had never had the occasion to use it. For anyone reading this, invest your time in and master advanced Git commands and especially that. It’s a life(hair?) saver!  Below were my commands:</p>
+
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>$ git reflog 
+$ git reset HEAD@{number}   //commit before rebase
+$ git status
+$ git reset --hard 
+</code></pre></div></div>
+
+<p>To summarize the above, I needed to get my local branch back to the state it was in before I rebased it. So the first two commands did that. 
+Next, to be sure i had the correct files staged - <code class="highlighter-rouge">git status</code>. Seeing all the deletions there, the obvious thing was to discard those changes thus the <code class="highlighter-rouge">git reset --hard</code>.</p>
+
+<p>With work now restored, it was easy to push it back to remote and end on good note.</p>
+
+  
+</article>
+
+
+  <footer class="related">
+    <div class="previous"><span>Previous Post</span><a href="/aws-lambda-rust/">AWS Lambda & Rust</a></div>
+    <div class="next"><span>Next Post</span><a href="/opentelemetry/">OpenTelemetry: Observability in Distributed Services</a></div>
+  </footer>
+
+
+
+</html>

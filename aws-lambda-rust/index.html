@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<title>AWS Lambda &amp; Rust | Codebrews &amp; Bytes</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Background The HR product my previous team inherited and migrated from Azure to AWS was built using ASP.Net in VB.Net. As one can imagine, this legacy applic...">
+<meta name="author" content="dReXler">
+<meta name="generator" content="Jekyll v4.0.1">
+<link rel="canonical" href="/aws-lambda-rust/">
+
+<link rel="stylesheet" href="/assets/css/minimal.css">
+
+<link rel="stylesheet" href="/assets/css/classes.css">
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="Codebrews & Bytes">
+
+
+
+
+<header class="icons">
+  
+  
+    
+  <nav>
+  <a aria-label="Home" href="/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#home"></use></svg><span aria-hidden="true" >Home</span></a>
+  <a aria-label="Moi?" href="/moi/" ><svg aria-hidden="true" class="hidden"><use xlink:href="/assets/fontawesome/icons.svg#address-card"></use></svg><span aria-hidden="true" >Moi?</span></a>
+  
+  </nav>
+
+
+    
+  <nav>
+  <a aria-label="Mail" href="mailto:andrew.quartey@gmail.com" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg><span aria-hidden="true" class="hidden">Mail</span></a>
+  <a aria-label="Github" href="https://github.com/drexler" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg><span aria-hidden="true" class="hidden">Github</span></a>
+  <a aria-label="Subscribe" href="/feed.xml" ><svg aria-hidden="true" ><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg><span aria-hidden="true" class="hidden">Subscribe</span></a>
+  
+  </nav>
+
+
+  
+  
+    <div class="hidden description"></div>
+  
+</header>
+
+<article>
+  <header>
+  
+  <h1><a href="/aws-lambda-rust/">AWS Lambda & Rust</a></h1><time datetime="2020-04-03T16:08:00+00:00">April 03, 2020</time>
+</header>
+
+  <h4 id="background">Background</h4>
+<p>
+The HR product my previous team inherited and migrated from Azure to AWS was built using ASP.Net in VB.Net. As one can imagine, this legacy application although particularly useful is woefully inadequate when 
+the modern alternatives such as single-page applications offer a smoother user experience. In order to modernize it, distinct functional parts of the application were to be
+re-written with ReactJS and the resulting bundle served out from a Cloudfront-distributed S3 bucket to the application on page loads. At Asure, all new development is <i>Cloud</i>-first. The 
+earliest module re-written this way was <i>Direct Deposits</i> whose backend was a series of lambdas utilizing node-mssql to interact with an RDS datastore. 
+</p>
+<p>
+Each tenant had a series of stored encrypted credentials that needed to be decoded for further calls into the other internal applications that
+linked the HR application to the Payroll suite. These were decoded on the fly. To replicate this, the original VB.Net code was ported into a utility lambda in .Net Core (2.1)
+from which other <i>Direct Deposit</i>-related lambdas could call into.  Ideally, having this a lambda layer would have been nice but with the different runtimes
+involved - Node &amp; .Net Core, that was ruled out. 
+</p>
+
+<h4 id="problem">Problem</h4>
+<p>With production workloads, each lambda needing to create/update/delete an existing direct deposit needed to await the result of the call to decrypt the necesary credentials.
+The associated cold start with the .Net Core-based decryptor lambda became a bottleneck to other lambdas and overall had a noticeable impact on the user experience. Here’s 
+an image the latency involved:</p>
+
+<p><img src="/assets/imgs/decrypt-lambda-unoptimized.png" alt="decrypt-lambda-unoptimized" /></p>
+
+<h4 id="solution">Solution</h4>
+<p>There were a few possible solutions:</p>
+<ul>
+  <li>Find supporting Node libraries and fold the existing decryption functionality into the various services.</li>
+  <li>Rewrite the decryption lambda in a different runtime.</li>
+</ul>
+
+<p>The first option looked promising, however, the nuances between this specific implementation and Node’s were a bit troublesome. The risk to breaking the existing services were also a factor. The second was limited in scope and with the alternatives available: Go &amp; Rust, there was an opportunity to investigate how these languages could be leveraged to meet the performance constraints we sought as well as expand the <em>tools</em> available to the team when it comes to performance-related problems. Since Rust is not garbage-collected and offers near native-C style performance, that won out. Admittedly, i am biased when it comes to Rust.</p>
+
+<p>Utilizing <a href="https://github.com/rusoto/rusoto">Rusoto</a>, the <a href="https://github.com/softprops/serverless-rust">Serverless-Rust</a> plugin, i canaried the Rust-equivalent version of the decryptor service. This was a non-optimized version with
+the following traits:</p>
+<ul>
+  <li>Non-architecture specific build</li>
+  <li>Skipped prewarming of the service investigate cold-start effects</li>
+  <li>Used synchronous IO-blocking version of <a href="https://github.com/rusoto/rusoto">Rusoto</a>, version <a href="https://docs.rs/crate/rusoto_core/0.42.0">0.42</a>.</li>
+  <li>OpenSSL instead of Rust-TLS</li>
+</ul>
+
+<p>The result: <strong>7X improvement on cold starts!</strong></p>
+
+<p><img src="/assets/imgs/rust-decrypt-lambda-unoptimized.png" alt="rust-decrypt-lambda" /></p>
+
+<h4 id="what-about-net-core-31">What about .Net Core 3.1?</h4>
+<p>So a few days back, AWS started providing support for .Net 3.1. Would upgrading to that help with the overall cold start improvement with the decrypt service. I did rummage around with that but although there’s a noticeable improvement in the overall cold starts the .Net Core 3.1-based lambda, the unoptimized Rust version still pips it at the post.  Here’s a summary of my findings. Note, this is not perfect benchmark but rather a focused use case analysis.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Lambda Runtime</th>
+      <th>Container Type</th>
+      <th>Avg Cold Start Time(ms)</th>
+      <th>Avg Duration(ms)</th>
+      <th>Avg Memory/Invocation(MB)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>.Net Core 2.1</td>
+      <td>AmazonLinux 2</td>
+      <td>4819</td>
+      <td>115</td>
+      <td>94</td>
+    </tr>
+    <tr>
+      <td>Custom (Rust)</td>
+      <td>AmazonLinux</td>
+      <td>283</td>
+      <td>232</td>
+      <td>39</td>
+    </tr>
+    <tr>
+      <td>.Net Core 3.1</td>
+      <td>AmazonLinux 2</td>
+      <td>3549</td>
+      <td>94</td>
+      <td>111</td>
+    </tr>
+    <tr>
+      <td>Custom (Rust**)</td>
+      <td>AmazonLinux</td>
+      <td>203</td>
+      <td>76</td>
+      <td>34</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Rust** : <em>Partially optimized (Rust TLS for Rusoto SDK, targeted architecture: x86_64-unknown-linux-musl)</em></p>
+
+
+  
+</article>
+
+
+  <footer class="related">
+    <div class="previous"><span>Previous Post</span><a href="/new-decade-new-platform/">Moving from Blogger to Github Pages</a></div>
+    <div class="next"><span>Next Post</span><a href="/reflog-rescue/">Git reflog to the rescue!</a></div>
+  </footer>
+
+
+
+</html>
